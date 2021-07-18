@@ -17,6 +17,10 @@ export default defineComponent({
 </script>
 
 <style>
+html {
+    font-size: 16px;
+}
+
 body {
     padding: 0;
     margin: 0;
