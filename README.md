@@ -1,4 +1,4 @@
-# mapbox-test2
+# Mapbox Demo
 
 ## Project setup
 ```
