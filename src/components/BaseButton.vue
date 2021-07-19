@@ -1,10 +1,15 @@
 <template>
-    <component :is="component" :target="useTarget">
+    <component
+        :is="component"
+        :class="classes"
+        :target="useTarget"
+    >
         <slot />
     </component>
 </template>
 
 <script lang="ts">
+import { Alignment } from '@/types/alignment'
 import {
     AnchorTarget,
     ButtonAlignment,
@@ -26,7 +31,15 @@ export default defineComponent({
         },
         color: {
             type: String as PropType<Colors>,
-            default: Colors.BLACK,
+            default: Colors.TRANSPARENT,
+        },
+        textColor: {
+            type: String as PropType<Colors>,
+            default: Colors.WHITE,
+        },
+        textAlign: {
+            type: String as PropType<Alignment>,
+            default: Alignment.CENTER,
         },
         href: {
             type: String,
@@ -45,6 +58,8 @@ export default defineComponent({
         })
         const classes = computed(() => [
             'v-button',
+            props.color,
+            `text-${props.textColor}`,
             `size-${props.size}`,
             `align-${props.align}`,
         ])
@@ -60,7 +75,35 @@ export default defineComponent({
 .v-button {
     display: flex;
     align-items: center;
+    flex-shrink: 0;
     height: 2.5rem;
+    white-space: nowrap;
+    padding: 0.5rem 1rem;
+    border: 0;
+
+    /* Color */
+
+    &.transparent {
+        background-color: transparent;
+    }
+
+    &.black {
+        background-color: #000;
+    }
+
+    &.white {
+        background-color: #fff;
+    }
+
+    /* Text Color */
+
+    &.text-black {
+        color: #000;
+    }
+
+    &.text-white {
+        color: #fff;
+    }
 
     /* Sizes */
 
@@ -69,15 +112,19 @@ export default defineComponent({
     }
 
     &.size-full-width {
-        width: auto;
+        width: 100%;
     }
 
     &.size-icon {
-        width: auto;
+        width: 1rem;
+        height: 1rem;
+        padding: 0;
     }
 
     &.size-toggle {
-        width: auto;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0.5rem;
     }
 
     /* Alignments */
