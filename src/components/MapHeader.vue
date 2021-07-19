@@ -6,7 +6,7 @@
                     size="toggle"
                     @click="onToggle"
                 >
-                    ...
+                    Avatar
                 </BaseButton>
             </template>
             <template #content-heading>

@@ -70,12 +70,11 @@ export default defineComponent({
     }
 
     .popup-menu {
-        position: absolute;
-        top: 0;
-        background-color: #000;
-        top: 3rem;
         display: flex;
         flex-direction: column;
+        position: absolute;
+        top: 3.5rem;
+        background-color: #000;
         padding: 0.5rem 0;
     }
 }
