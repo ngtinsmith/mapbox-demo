@@ -10,10 +10,10 @@
                     :key="tab"
                     color="black"
                     text-color="white"
-                    :class="{ active: currentTab === tab.type }"
+                    :class="{ active: currentTab === tab }"
                     @click="changeTab(tab)"
                 >
-                    {{ tab.type }}
+                    {{ tab }}
                 </BaseButton>
             </div>
 
@@ -46,7 +46,7 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, onMounted, ref } from 'vue'
+import { computed, defineComponent, onMounted } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
@@ -55,18 +55,24 @@ import ToolbarSearch from './ToolbarSearch.vue'
 import ToolbarAdd from './ToolbarAdd.vue'
 import ToolbarExport from './ToolbarExport.vue'
 
-import { MapToolbarTab, Tab } from '@/types/tab'
-
-const staticTabs = [
-    MapToolbarTab.SEARCH,
-    MapToolbarTab.ADD,
-    MapToolbarTab.EXPORT,
-]
+import { MapToolbarTab } from '@/types/tab'
+import { useTab } from '@/composables/use-tab'
 
 export default defineComponent({
     components: { BaseButton },
     setup() {
-        const currentTab = ref<MapToolbarTab | null>(MapToolbarTab.SEARCH)
+        const { currentTab, changeTab } = useTab<MapToolbarTab>(
+            MapToolbarTab.SEARCH
+        )
+
+        const tabs = computed((): MapToolbarTab[] => {
+            return [
+                MapToolbarTab.SEARCH,
+                MapToolbarTab.ADD,
+                MapToolbarTab.EXPORT,
+            ]
+        })
+
         const currentTabComponent = computed(() => {
             let component
 
@@ -86,23 +92,6 @@ export default defineComponent({
 
             return component
         })
-
-        const tabs = computed((): Tab[] => {
-            return staticTabs.map(tab => {
-                return {
-                    type: tab,
-                    isActive: tab === currentTab.value,
-                }
-            })
-        })
-
-        function changeTab(tab: Tab): void {
-            if (currentTab.value === tab.type) {
-                currentTab.value = null
-            } else {
-                currentTab.value = tab.type
-            }
-        }
 
         onMounted(() => {
             mapboxgl.accessToken = process.env.VUE_APP_MAPBOX_TOKEN
