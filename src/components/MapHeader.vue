@@ -23,13 +23,13 @@
                 </BaseButton>
                 <BaseButton
                     align="left"
-                    @click="createNew"
+                    @click="save"
                 >
                     Save
                 </BaseButton>
                 <BaseButton
                     align="left"
-                    @click="createNew"
+                    @click="signOut"
                 >
                     Sign out
                 </BaseButton>

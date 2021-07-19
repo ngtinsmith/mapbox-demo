@@ -21,6 +21,8 @@
                 <component
                     :is="currentTabComponent"
                     :current-tab="currentTab"
+                    @[tabEvent]="handleTabEvent"
+                    @focus-location="onFocusLocation"
                 />
             </keep-alive>
         </div>
@@ -46,7 +48,7 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, onMounted } from 'vue'
+import { computed, defineComponent, onMounted, ref } from 'vue'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 
@@ -57,6 +59,7 @@ import ToolbarExport from './ToolbarExport.vue'
 
 import { MapToolbarTab } from '@/types/tab'
 import { useTab } from '@/composables/use-tab'
+import { MapboxPlaceFeature } from '@/types/mapbox'
 
 export default defineComponent({
     components: { BaseButton },
@@ -93,10 +96,19 @@ export default defineComponent({
             return component
         })
 
+        // TODO: handle nested tab event
+        const tabEvent = computed(() => {
+            return currentTab.value
+        })
+        function handleTabEvent(payload: any): void {
+            console.log(payload)
+        }
+        let map: mapboxgl.Map
+
         onMounted(() => {
             mapboxgl.accessToken = process.env.VUE_APP_MAPBOX_TOKEN
 
-            const map = new mapboxgl.Map({
+            map = new mapboxgl.Map({
                 container: 'map', // container ID
                 style: 'mapbox://styles/mapbox/streets-v11', // style URL
                 center: [-74.5, 40], // starting position [lng, lat]
@@ -106,14 +118,27 @@ export default defineComponent({
             console.log(map)
         })
 
-        return { tabs, currentTab, currentTabComponent, changeTab }
+        function onFocusLocation(location: MapboxPlaceFeature) {
+            console.log(location)
+            map.jumpTo({ center: location.geometry.coordinates })
+        }
+
+        return {
+            tabs,
+            currentTab,
+            currentTabComponent,
+            changeTab,
+            tabEvent,
+            handleTabEvent,
+            onFocusLocation,
+        }
     },
 })
 </script>
 
 <style lang="scss" scoped>
 .map {
-    height: calc(100vh - 2.5rem);
+    height: calc(100vh - 2.5rem); /* Minux header height */
     position: relative;
 
     .toolbar-main {

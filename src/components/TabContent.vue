@@ -29,7 +29,6 @@ export default defineComponent({
 .tab-content {
     display: none;
     flex-direction: column;
-    border: 1px solid magenta;
 
     &.active {
         display: flex;
