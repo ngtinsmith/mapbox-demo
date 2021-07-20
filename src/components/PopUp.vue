@@ -37,9 +37,13 @@ export default defineComponent({
             type: String as PropType<Alignment>,
             default: Alignment.LEFT,
         },
+        initialized: {
+            type: Boolean,
+            default: false,
+        },
     },
     setup(props) {
-        const { isActive, toggleIsActive } = useToggle(true)
+        const { isActive, toggleIsActive } = useToggle(props.initialized)
         const classes = computed(() => ['popup', `align-${props.align}`])
 
         return { classes, isActive, toggleIsActive }

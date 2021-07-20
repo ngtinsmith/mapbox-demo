@@ -3,6 +3,7 @@
  *
  * input: `--the_quick brown-fox_jumps`
  * match: [ "the", "quick", "brown", "fox", "jumps" ]
+ * output: `theQuickBrownFoxJumps`
  */
 export const toCamelCase = (str: string): string => {
     const regex = /[a-zA-Z]+[^\s_-]/g

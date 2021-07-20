@@ -8,12 +8,16 @@
                 <BaseButton
                     v-for="tab in tabs"
                     :key="tab"
-                    color="black"
-                    text-color="white"
+                    :color="currentTab === tab ? 'white' : 'black'"
+                    :text-color="currentTab === tab ? 'black' : 'white'"
                     :class="{ active: currentTab === tab }"
+                    size="toggle"
+                    :title="`${capitalize(tab)}`"
                     @click="changeTab(tab)"
                 >
-                    {{ tab }}
+                    <span style="font-size: 1.25rem; display: flex;">
+                        <i :class="getToolbarIcon(tab)" />
+                    </span>
                 </BaseButton>
             </div>
 
@@ -21,36 +25,27 @@
                 <component
                     :is="currentTabComponent"
                     :current-tab="currentTab"
-                    @[tabEvent]="handleTabEvent"
                     @focus-location="onFocusLocation"
+                    @mark="addMarker"
                 />
             </keep-alive>
-        </div>
-        <div class="toolbar-left">
-            <div class="toolbar-actions">
-                <BaseButton
-                    color="black"
-                    text-color="white"
-                    size="toggle"
-                >
-                    +
-                </BaseButton>
-                <BaseButton
-                    color="black"
-                    text-color="white"
-                    size="toggle"
-                >
-                    -
-                </BaseButton>
-            </div>
         </div>
     </div>
 </template>
 
 <script lang="ts">
-import { computed, defineComponent, onMounted, ref } from 'vue'
+import {
+    capitalize,
+    computed,
+    defineComponent,
+    onMounted,
+    PropType,
+    ref,
+} from 'vue'
+
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import 'remixicon/fonts/remixicon.css'
 
 import BaseButton from './BaseButton.vue'
 import ToolbarSearch from './ToolbarSearch.vue'
@@ -59,12 +54,20 @@ import ToolbarExport from './ToolbarExport.vue'
 
 import { MapToolbarTab } from '@/types/tab'
 import { useTab } from '@/composables/use-tab'
-import { MapboxPlaceFeature } from '@/types/mapbox'
+import { MapFeature, MapCoordinates } from '@/types/mapbox'
+import { stringToHtml } from '@/helpers/html-templates'
 
 export default defineComponent({
     components: { BaseButton },
-    setup() {
-        const { currentTab, changeTab } = useTab<MapToolbarTab>(
+    props: {
+        initialLocation: {
+            type: Object as PropType<MapFeature>,
+            default: null,
+            required: true,
+        },
+    },
+    setup(props) {
+        const { currentTab, changeTab, isTab } = useTab<MapToolbarTab>(
             MapToolbarTab.SEARCH
         )
 
@@ -96,41 +99,135 @@ export default defineComponent({
             return component
         })
 
-        // TODO: handle nested tab event
-        const tabEvent = computed(() => {
-            return currentTab.value
-        })
-        function handleTabEvent(payload: any): void {
-            console.log(payload)
-        }
         let map: mapboxgl.Map
+        const activeLocation = ref<MapFeature>(props.initialLocation)
 
         onMounted(() => {
-            mapboxgl.accessToken = process.env.VUE_APP_MAPBOX_TOKEN
+            createMap()
+        })
 
+        function createMap(): void {
+            mapboxgl.accessToken = process.env.VUE_APP_MAPBOX_TOKEN
             map = new mapboxgl.Map({
                 container: 'map', // container ID
                 style: 'mapbox://styles/mapbox/streets-v11', // style URL
-                center: [-74.5, 40], // starting position [lng, lat]
+                center:
+                    activeLocation.value?.center ??
+                    props.initialLocation.center, // starting position [lng, lat]
                 zoom: 9, // starting zoom
             })
 
-            console.log(map)
-        })
+            // Add zoom and rotation controls to the map.
+            map.addControl(new mapboxgl.NavigationControl())
 
-        function onFocusLocation(location: MapboxPlaceFeature) {
-            console.log(location)
+            // Events
+            map.on('dragend', onDragEnd)
+        }
+
+        function onDragEnd(): void {
+            const { lng, lat } = map.getCenter()
+            const coordinates: MapCoordinates = [lng, lat]
+
+            activeLocation.value = {
+                ...activeLocation.value,
+                center: coordinates,
+                geometry: {
+                    ...activeLocation.value.geometry,
+                    coordinates,
+                },
+            }
+        }
+
+        function onFocusLocation(location: MapFeature): void {
+            activeLocation.value = location
             map.jumpTo({ center: location.geometry.coordinates })
+        }
+
+        function addMarker(classMark: string): void {
+            const location = activeLocation.value
+
+            if (!location) return
+
+            // Create a DOM element for each marker.
+            const markerIconSize = location.properties.iconSize ?? [50, 50]
+            const [lng, lat] = markerIconSize
+
+            const svgFrag = stringToHtml(`<i class="${classMark}"></i>`)
+            const el = document.createElement('div')
+
+            el.classList.add('v-marker')
+            el.setAttribute('title', classMark.replace(/^(ri-)/, ''))
+            Object.assign(el.style, {
+                fontSize: `${lng}px`,
+                width: `${lng}px`,
+                height: `${lat}px`,
+                display: 'flex',
+            })
+            el.appendChild(svgFrag)
+
+            let marker: mapboxgl.Marker
+
+            const removeBtnDiv = document.createElement('div')
+            const removeBtnFrag = stringToHtml(`
+                <button
+                    class="v-button black text-white size-toggle align-center"
+                    title="Remove marker"
+                >
+                    Remove marker <i class="ri-delete-bin-line ri-xl"></i>
+                </button>
+            `)
+
+            removeBtnFrag
+                .querySelector('button')
+                ?.addEventListener('click', function () {
+                    marker.remove()
+                })
+            removeBtnDiv.appendChild(removeBtnFrag)
+
+            const popup = new mapboxgl.Popup({ offset: 25 }).setDOMContent(
+                removeBtnDiv
+            )
+
+            // Add markers to the map.
+            marker = new mapboxgl.Marker({
+                element: el,
+                draggable: true,
+            })
+                .setLngLat(location.geometry.coordinates)
+                .setPopup(popup)
+                .addTo(map)
+        }
+
+        function getToolbarIcon(tab: MapToolbarTab): string {
+            let classIcon = ''
+
+            switch (tab) {
+                case MapToolbarTab.SEARCH:
+                    classIcon = 'ri-search-line'
+                    break
+                case MapToolbarTab.ADD:
+                    classIcon = 'ri-add-fill'
+                    break
+                case MapToolbarTab.EXPORT:
+                    classIcon = 'ri-upload-2-fill'
+                    break
+                default:
+                    break
+            }
+
+            return classIcon
         }
 
         return {
             tabs,
             currentTab,
+            isTab,
             currentTabComponent,
             changeTab,
-            tabEvent,
-            handleTabEvent,
             onFocusLocation,
+            addMarker,
+            getToolbarIcon,
+            capitalize,
         }
     },
 })
@@ -153,20 +250,63 @@ export default defineComponent({
         }
     }
 
-    .toolbar-left {
-        position: absolute;
-        top: 50%;
-        right: 1rem;
-        transform: translateY(-50%);
-        z-index: 10;
-    }
-
     .toolbar-actions {
         display: flex;
         flex-direction: column;
 
         > :deep(*:not(:last-child)) {
             margin-bottom: 0.5rem;
+        }
+    }
+}
+</style>
+
+<style lang="scss">
+/**
+ * Mapbox Style Overrides
+ *
+ * defined in this scope since this is where we import their static *.css file
+ */
+.mapboxgl-ctrl-top-right {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+
+    .mapbox-ctrl {
+        margin: 0;
+        float: none;
+    }
+}
+
+.v-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    > {
+        display: flex;
+    }
+}
+
+.mapboxgl-popup-content {
+    padding: 1.25rem 1rem 1rem;
+
+    .v-button {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        height: 2.5rem;
+        white-space: nowrap;
+        padding: 0.5rem 1rem;
+        border: 0;
+
+        &:not(:first-child) {
+            margin-top: 0.5rem;
+        }
+
+        i {
+            margin-left: 0.5rem;
         }
     }
 }

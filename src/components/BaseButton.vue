@@ -3,6 +3,7 @@
         :is="component"
         :class="classes"
         :target="useTarget"
+        :title="title"
     >
         <slot />
     </component>
@@ -48,6 +49,10 @@ export default defineComponent({
         target: {
             type: String as PropType<AnchorTarget>,
             default: AnchorTarget.BLANK,
+        },
+        title: {
+            type: String,
+            default: null,
         },
     },
     setup(props) {

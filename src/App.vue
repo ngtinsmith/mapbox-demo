@@ -1,18 +1,36 @@
 <template>
     <MapHeader />
-    <Map />
+    <Map :initial-location="initialLocation" />
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { defineComponent, reactive } from 'vue'
 import MapHeader from './components/MapHeader.vue'
 import Map from './components/Map.vue'
+import { MapFeature } from './types/mapbox'
 
 export default defineComponent({
     name: 'App',
     components: {
         Map,
         MapHeader,
+    },
+    setup() {
+        const initialLocation = reactive<MapFeature>({
+            type: 'Feature',
+            properties: {
+                message: 'Foo',
+                iconSize: [50, 50],
+            },
+            /* center: [-74.5, 40], */
+            center: [-73.9866, 40.7306],
+            geometry: {
+                type: 'Point',
+                coordinates: [-73.9866, 40.7306],
+            },
+        })
+
+        return { initialLocation }
     },
 })
 </script>

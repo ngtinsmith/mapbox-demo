@@ -17,7 +17,7 @@
                 :key="mapFeature.id"
                 class="map-feature"
                 align="left"
-                @click="onSelectLocation(mapFeature)"
+                @click="selectLocation(mapFeature)"
             >
                 {{ mapFeature.place_name }}
             </BaseButton>
@@ -34,37 +34,7 @@ import mapboxgl from 'mapbox-gl'
 import axios, { AxiosResponse } from 'axios'
 import { GEOCODING_ENDPOINT } from '@/constants/api'
 import BaseButton from './BaseButton.vue'
-
-interface PlaceFeatureContext {
-    id: string
-    wikidata: string
-    text: string
-    short_code?: string
-}
-
-interface MapboxPlaceFeature {
-    id: string
-    type: string
-    place_type: string[]
-    relevance: number
-    properties: { wikidata: string }
-    text: string
-    place_name: string
-    bbox: number[]
-    center: number[]
-    geometry: {
-        type: string
-        coordinates: number[]
-    }
-    context: PlaceFeatureContext[]
-}
-
-interface MapboxPlacesResponse {
-    type: string
-    query: string[]
-    features: MapboxPlaceFeature[]
-    attribution: string
-}
+import { MapFeature } from '@/types/mapbox'
 
 export default defineComponent({
     components: { TabContent, BaseButton },
@@ -83,17 +53,18 @@ export default defineComponent({
         },
         debounceTimer: {
             type: Number,
-            default: 400,
+            default: 500,
         },
     },
     emits: ['search', 'focus-location'],
     setup(props, { emit }) {
         const searchKeyword = ref('')
-        const searchedMaps = ref<MapboxPlaceFeature[]>([])
+        const searchedMaps = ref<MapFeature[]>([])
 
         const isActive = computed(
             () => props.currentTab === MapToolbarTab.SEARCH
         )
+
         async function searchHandler(e: Event) {
             const target = e.target as HTMLInputElement
 
@@ -105,6 +76,7 @@ export default defineComponent({
                 const mapBoxEndpoint = 'mapbox.places'
 
                 const geocodingUrl = `${GEOCODING_ENDPOINT}/v5/${mapBoxEndpoint}/${transformedKeyword}.json?access_token=${mapBoxToken}`
+                // TODO: move to services/api
                 const results: AxiosResponse = await axios.get(geocodingUrl)
 
                 console.log(results.data.features)
@@ -113,11 +85,11 @@ export default defineComponent({
 
             // Set and emit
             searchKeyword.value = target.value
-            emit('search', searchKeyword.value)
         }
+
         const onSearch = debounce(searchHandler, props.debounceTimer)
 
-        function onSelectLocation(location: MapboxPlaceFeature): void {
+        function selectLocation(location: MapFeature): void {
             emit('focus-location', location)
         }
 
@@ -126,7 +98,7 @@ export default defineComponent({
             searchKeyword,
             onSearch,
             searchedMaps,
-            onSelectLocation,
+            selectLocation,
         }
     },
 })
@@ -134,7 +106,7 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .search-field {
-    padding: 0 0.5rem;
+    padding: 0 1rem;
     background-color: #000;
     margin-bottom: 0.5rem;
 

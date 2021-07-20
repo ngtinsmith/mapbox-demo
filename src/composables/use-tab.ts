@@ -3,6 +3,7 @@ import { Ref, ref, UnwrapRef } from 'vue'
 export interface ComposableUseTab<T> {
     currentTab: Ref<UnwrapRef<T> | null>
     changeTab: (tab: UnwrapRef<T>) => void
+    isTab: (tab: string) => boolean
 }
 
 export function useTab<T>(initialTab: T | null): ComposableUseTab<T> {
@@ -15,6 +16,7 @@ export function useTab<T>(initialTab: T | null): ComposableUseTab<T> {
             currentTab.value = tab
         }
     }
+    const isTab = (tab: string): boolean => currentTab.value === tab
 
-    return { currentTab, changeTab }
+    return { currentTab, changeTab, isTab }
 }

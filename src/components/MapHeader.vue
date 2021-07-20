@@ -4,9 +4,10 @@
             <template #toggle="{ onToggle }">
                 <BaseButton
                     size="toggle"
+                    title="User dropdown"
                     @click="onToggle"
                 >
-                    Avatar
+                    <i class="ri-user-fill ri-xl"></i>
                 </BaseButton>
             </template>
             <template #content-heading>
