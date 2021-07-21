@@ -25,7 +25,7 @@
                 <component
                     :is="currentTabComponent"
                     :current-tab="currentTab"
-                    @focus-location="onFocusLocation"
+                    @focus-location="focusLocation"
                     @mark="addMarker"
                 />
             </keep-alive>
@@ -138,7 +138,7 @@ export default defineComponent({
             }
         }
 
-        function onFocusLocation(location: MapFeature): void {
+        function focusLocation(location: MapFeature): void {
             activeLocation.value = location
             map.jumpTo({ center: location.geometry.coordinates })
         }
@@ -148,27 +148,55 @@ export default defineComponent({
 
             if (!location) return
 
-            // Create a DOM element for each marker.
+            let marker: mapboxgl.Marker
             const markerIconSize = location.properties.iconSize ?? [50, 50]
-            const [lng, lat] = markerIconSize
 
-            const svgFrag = stringToHtml(`<i class="${classMark}"></i>`)
+            // Create a DOM element for each marker.
+            const markerElement = createMarkerElement(classMark, markerIconSize)
+
+            // Create marker PopUp with remove button
+            const markerRemoveElement = createRemoveMarkerElement(() =>
+                marker.remove()
+            )
+
+            // Add PopUp for each marker
+            const popup = new mapboxgl.Popup({ offset: 25 }).setDOMContent(
+                markerRemoveElement
+            )
+
+            // Add markers to the map.
+            marker = new mapboxgl.Marker({
+                element: markerElement,
+                draggable: true,
+            })
+                .setLngLat(location.geometry.coordinates)
+                .setPopup(popup)
+                .addTo(map)
+        }
+
+        function createMarkerElement(mark: string, iconSize: MapCoordinates) {
+            const [lng, lat] = iconSize
+            const svgFrag = stringToHtml(`<i class="${mark}"></i>`)
             const el = document.createElement('div')
 
             el.classList.add('v-marker')
-            el.setAttribute('title', classMark.replace(/^(ri-)/, ''))
+            el.setAttribute('title', mark.replace(/^(ri-)/, ''))
+
             Object.assign(el.style, {
-                fontSize: `${lng}px`,
+                display: 'flex',
                 width: `${lng}px`,
                 height: `${lat}px`,
-                display: 'flex',
+                fontSize: `${lng}px`, // for remix size
             })
+
             el.appendChild(svgFrag)
 
-            let marker: mapboxgl.Marker
+            return el
+        }
 
-            const removeBtnDiv = document.createElement('div')
-            const removeBtnFrag = stringToHtml(`
+        function createRemoveMarkerElement(onRemove: () => void) {
+            const div = document.createElement('div')
+            const removeBtnFragment = stringToHtml(`
                 <button
                     class="v-button black text-white size-toggle align-center"
                     title="Remove marker"
@@ -177,25 +205,12 @@ export default defineComponent({
                 </button>
             `)
 
-            removeBtnFrag
+            removeBtnFragment
                 .querySelector('button')
-                ?.addEventListener('click', function () {
-                    marker.remove()
-                })
-            removeBtnDiv.appendChild(removeBtnFrag)
+                ?.addEventListener('click', onRemove)
+            div.appendChild(removeBtnFragment)
 
-            const popup = new mapboxgl.Popup({ offset: 25 }).setDOMContent(
-                removeBtnDiv
-            )
-
-            // Add markers to the map.
-            marker = new mapboxgl.Marker({
-                element: el,
-                draggable: true,
-            })
-                .setLngLat(location.geometry.coordinates)
-                .setPopup(popup)
-                .addTo(map)
+            return div
         }
 
         function getToolbarIcon(tab: MapToolbarTab): string {
@@ -224,7 +239,7 @@ export default defineComponent({
             isTab,
             currentTabComponent,
             changeTab,
-            onFocusLocation,
+            focusLocation,
             addMarker,
             getToolbarIcon,
             capitalize,
