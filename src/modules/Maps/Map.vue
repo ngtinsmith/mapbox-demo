@@ -335,11 +335,12 @@ export default defineComponent({
         async function screenshot() {
             const { lng, lat } = map.getCenter()
 
-            const w = document.getElementById('map')?.clientWidth ?? 1280
-            let h = document.getElementById('map')?.clientHeight ?? 600
+            let w = document.getElementById('map')?.clientWidth ?? 1280
+            let h = document.getElementById('map')?.clientHeight ?? 1280
 
-            // Mapbox max-height: Height must be between 1-1280
-            h = h > 1280 ? 1280 : w
+            // Mapbox max-dimension: Height/Width must be between 1-1280
+            w = w > 1280 ? 1280 : w
+            h = h > 1280 ? 1280 : h
 
             const imageBlob = await fetchStaticMapImage({
                 lng,
