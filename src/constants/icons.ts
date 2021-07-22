@@ -169,4 +169,5 @@ export const remixIcons = [
     'ri-truck-line',
     'ri-walk-fill',
     'ri-walk-line',
+    'ri-screenshot-2-fill',
 ]

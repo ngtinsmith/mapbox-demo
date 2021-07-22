@@ -109,6 +109,7 @@ $font-weights: 400, 500, 600, 700;
     white-space: nowrap;
     padding: 0.5rem 1rem;
     border: 0;
+    cursor: pointer;
 
     /* Casing */
 

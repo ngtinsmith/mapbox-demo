@@ -46,7 +46,7 @@ export default defineComponent({
             },
         }
 
-        const initialLocation = reactive<MapFeature>(locationMaine)
+        const initialLocation = reactive<MapFeature>(locationPhilly)
 
         return { initialLocation }
     },

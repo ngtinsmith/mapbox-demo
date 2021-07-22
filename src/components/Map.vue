@@ -13,7 +13,7 @@
                     :class="{ active: currentTab === tab }"
                     size="toggle"
                     :title="`${capitalize(tab)}`"
-                    @click="changeTab(tab)"
+                    @click="() => handleChangeTab(tab)"
                 >
                     <span style="font-size: 1.25rem; display: flex;">
                         <i :class="getToolbarIcon(tab)" />
@@ -73,17 +73,17 @@ import {
 } from 'vue'
 
 import mapboxgl from 'mapbox-gl'
+import MapboxDraw from '@mapbox/mapbox-gl-draw'
+
 import 'mapbox-gl/dist/mapbox-gl.css'
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
 import 'remixicon/fonts/remixicon.css'
 
 import BaseButton from './BaseButton.vue'
 import ToolbarSearch from './ToolbarSearch.vue'
 import ToolbarAdd from './ToolbarAdd.vue'
 import ToolbarExport from './ToolbarExport.vue'
-
-import ToolbarStyleIcon from './ToolbarStyleIcon.vue'
 import ToolbarStyleLabel from './ToolbarStyleLabel.vue'
-import ToolbarStyleLayer from './ToolbarStyleLayer.vue'
 
 import { TextMarker, TextMarkerElement } from '@/composables/use-text-marker'
 import { useTab } from '@/composables/use-tab'
@@ -91,7 +91,7 @@ import { useTab } from '@/composables/use-tab'
 import { MapToolbarTab, TabComponentStyle } from '@/types/tab'
 import { MapFeature, MapCoordinates } from '@/types/mapbox'
 import { stringToHtml } from '@/helpers/html-templates'
-import axios, { AxiosResponse } from 'axios'
+import axios from 'axios'
 
 export default defineComponent({
     components: { BaseButton },
@@ -100,6 +100,14 @@ export default defineComponent({
             type: Object as PropType<MapFeature>,
             default: null,
             required: true,
+        },
+        zoom: {
+            type: Number,
+            default: 8,
+        },
+        bearing: {
+            type: Number,
+            default: 0,
         },
     },
     setup(props) {
@@ -128,7 +136,7 @@ export default defineComponent({
             return [
                 MapToolbarTab.SEARCH,
                 MapToolbarTab.ADD,
-                MapToolbarTab.EXPORT,
+                MapToolbarTab.SCREENSHOT,
             ]
         })
 
@@ -142,7 +150,7 @@ export default defineComponent({
                 case MapToolbarTab.ADD:
                     component = ToolbarAdd
                     break
-                case MapToolbarTab.EXPORT:
+                case MapToolbarTab.SCREENSHOT:
                     component = ToolbarExport
                     break
                 default:
@@ -159,25 +167,15 @@ export default defineComponent({
         } = useTab<TabComponentStyle>(null)
 
         const tabsStyle = computed((): TabComponentStyle[] => {
-            return [
-                TabComponentStyle.ICON,
-                TabComponentStyle.LABEL,
-                TabComponentStyle.LAYER,
-            ]
+            return [TabComponentStyle.LABEL]
         })
 
         const currentTabComponentStyle = computed(() => {
             let component
 
             switch (currentTabStyle.value) {
-                case TabComponentStyle.ICON:
-                    component = ToolbarStyleIcon
-                    break
                 case TabComponentStyle.LABEL:
                     component = ToolbarStyleLabel
-                    break
-                case TabComponentStyle.LAYER:
-                    component = ToolbarStyleLayer
                     break
                 default:
                     break
@@ -205,7 +203,7 @@ export default defineComponent({
                 center:
                     activeLocation.value?.center ??
                     props.initialLocation.center, // starting position [lng, lat]
-                zoom: 9, // starting zoom
+                zoom: props.zoom, // starting zoom
             })
 
             // Add zoom and rotation controls to the map.
@@ -218,67 +216,15 @@ export default defineComponent({
         }
 
         function onLoad(): void {
-            // Add a data source containing GeoJSON data.
-            map.addSource('maine', {
-                type: 'geojson',
-                data: {
-                    type: 'Feature',
-                    properties: {
-                        iconSize: [50, 50],
-                    },
-                    geometry: {
-                        type: 'Polygon',
-                        // These coordinates outline Maine.
-                        coordinates: [
-                            [
-                                [-67.13734, 45.13745],
-                                [-66.96466, 44.8097],
-                                [-68.03252, 44.3252],
-                                [-69.06, 43.98],
-                                [-70.11617, 43.68405],
-                                [-70.64573, 43.09008],
-                                [-70.75102, 43.08003],
-                                [-70.79761, 43.21973],
-                                [-70.98176, 43.36789],
-                                [-70.94416, 43.46633],
-                                [-71.08482, 45.30524],
-                                [-70.66002, 45.46022],
-                                [-70.30495, 45.91479],
-                                [-70.00014, 46.69317],
-                                [-69.23708, 47.44777],
-                                [-68.90478, 47.18479],
-                                [-68.2343, 47.35462],
-                                [-67.79035, 47.06624],
-                                [-67.79141, 45.70258],
-                                [-67.13734, 45.13745],
-                            ],
-                        ],
-                    },
+            const draw = new MapboxDraw({
+                displayControlsDefault: false,
+                controls: {
+                    polygon: true,
+                    trash: true,
                 },
             })
 
-            // Add a new layer to visualize the polygon.
-            map.addLayer({
-                id: 'maine',
-                type: 'fill',
-                source: 'maine', // reference the data source
-                layout: {},
-                paint: {
-                    'fill-color': '#0080ff', // blue color fill
-                    'fill-opacity': 0.5,
-                },
-            })
-            // Add a black outline around the polygon.
-            map.addLayer({
-                id: 'outline',
-                type: 'line',
-                source: 'maine',
-                layout: {},
-                paint: {
-                    'line-color': '#000',
-                    'line-width': 3,
-                },
-            })
+            map.addControl(draw)
         }
 
         function onDragEnd(): void {
@@ -300,15 +246,6 @@ export default defineComponent({
         ): Promise<void> {
             changeTab(null)
             changeTabStyle(null)
-
-            const { lng, lat } = e.lngLat
-
-            const token = process.env.VUE_APP_MAPBOX_TOKEN
-            const queryUrl = `https://api.mapbox.com/v4/mapbox.enterprise-boundaries-a0-v2/tilequery/${lng},${lat}.json?access_token=${token}`
-
-            const results: AxiosResponse = await axios.get(queryUrl)
-
-            console.log(results.data)
         }
 
         function focusLocation(location: MapFeature): void {
@@ -418,11 +355,58 @@ export default defineComponent({
                 case TabComponentStyle.LAYER:
                     classIcon = 'ri-stack-fill'
                     break
+                case TabComponentStyle.SCREENSHOT:
+                    classIcon = 'ri-screenshot-2-fill'
+                    break
                 default:
                     break
             }
 
             return classIcon
+        }
+
+        function handleChangeTab(tab: MapToolbarTab) {
+            if (tab === MapToolbarTab.SCREENSHOT) {
+                changeTab(null)
+                screenshot()
+            } else {
+                changeTab(tab)
+            }
+        }
+
+        async function screenshot() {
+            const { lng, lat } = map.getCenter()
+
+            const w = document.getElementById('map')?.clientWidth ?? 1280
+            let h = document.getElementById('map')?.clientHeight ?? 600
+
+            // Mapbox max-height: Height must be between 1-1280
+            h = h > 1280 ? 1280 : w
+
+            const token = process.env.VUE_APP_MAPBOX_TOKEN
+            const url = `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/${lng},${lat},${props.zoom},${props.bearing}/${w}x${h}?access_token=${token}`
+
+            const result = await axios({
+                url,
+                method: 'GET',
+                responseType: 'blob',
+            })
+
+            download(result.data)
+        }
+
+        function download(image: Blob, filename = 'image'): void {
+            const blob = new Blob([image], { type: 'image/png' })
+            const reader = new FileReader()
+
+            const link = document.createElement('a')
+            link.setAttribute('download', `${filename}.png`)
+
+            reader.readAsDataURL(blob)
+            reader.onload = function () {
+                link.href = reader.result as string
+                link.click()
+            }
         }
 
         return {
@@ -442,6 +426,7 @@ export default defineComponent({
             addMarker,
             getToolbarIcon,
             capitalize,
+            handleChangeTab,
         }
     },
 })
@@ -489,7 +474,7 @@ export default defineComponent({
 
 <style lang="scss">
 /**
- * Mapbox Style Overrides
+ * Mapbox Style Overrides / Globals
  *
  * defined in this scope since this is where we import their static *.css file
  */
@@ -502,6 +487,28 @@ export default defineComponent({
     .mapbox-ctrl {
         margin: 0;
         float: none;
+    }
+}
+
+.mapboxgl-popup-content {
+    padding: 1.25rem 1rem 1rem;
+
+    .v-button {
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        height: 2.5rem;
+        white-space: nowrap;
+        padding: 0.5rem 1rem;
+        border: 0;
+
+        &:not(:first-child) {
+            margin-top: 0.5rem;
+        }
+
+        i {
+            margin-left: 0.5rem;
+        }
     }
 }
 
@@ -534,25 +541,14 @@ export default defineComponent({
     }
 }
 
-.mapboxgl-popup-content {
-    padding: 1.25rem 1rem 1rem;
-
-    .v-button {
-        display: flex;
-        align-items: center;
-        flex-shrink: 0;
-        height: 2.5rem;
-        white-space: nowrap;
-        padding: 0.5rem 1rem;
-        border: 0;
-
-        &:not(:first-child) {
-            margin-top: 0.5rem;
-        }
-
-        i {
-            margin-left: 0.5rem;
-        }
-    }
+.calculation-box {
+    height: 75px;
+    width: 150px;
+    position: absolute;
+    bottom: 40px;
+    left: 10px;
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 15px;
+    text-align: center;
 }
 </style>

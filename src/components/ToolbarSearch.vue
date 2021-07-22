@@ -26,15 +26,16 @@
 </template>
 
 <script lang="ts">
-import { MapToolbarTab } from '@/types/tab'
 import { computed, defineComponent, PropType, ref } from 'vue'
-import TabContent from './TabContent.vue'
-import debounce from 'lodash/debounce'
 import mapboxgl from 'mapbox-gl'
-import axios, { AxiosResponse } from 'axios'
-import { GEOCODING_ENDPOINT } from '@/constants/api'
+
+import TabContent from './TabContent.vue'
 import BaseButton from './BaseButton.vue'
+
+import debounce from 'lodash/debounce'
+import { MapToolbarTab } from '@/types/tab'
 import { MapFeature } from '@/types/mapbox'
+import { searchLocation } from '@/services/api'
 
 export default defineComponent({
     components: { TabContent, BaseButton },
@@ -71,16 +72,9 @@ export default defineComponent({
             if (target.value === '') {
                 searchedMaps.value = []
             } else {
-                const transformedKeyword = encodeURIComponent(target.value)
-                const mapBoxToken = process.env.VUE_APP_MAPBOX_TOKEN
-                const mapBoxEndpoint = 'mapbox.places'
+                const response = await searchLocation(target.value)
 
-                const geocodingUrl = `${GEOCODING_ENDPOINT}/v5/${mapBoxEndpoint}/${transformedKeyword}.json?access_token=${mapBoxToken}`
-                // TODO: move to services/api
-                const results: AxiosResponse = await axios.get(geocodingUrl)
-
-                console.log(results.data.features)
-                searchedMaps.value = results.data.features
+                searchedMaps.value = response.features
             }
 
             // Set and emit
