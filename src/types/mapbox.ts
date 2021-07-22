@@ -1,3 +1,5 @@
+import mapboxgl from 'mapbox-gl'
+
 export interface MapboxPlacesResponse {
     type: string
     query: string[]
@@ -38,3 +40,5 @@ export interface PlaceFeatureContext {
     text: string
     short_code?: string
 }
+
+export type GetMapInstance = () => mapboxgl.Map

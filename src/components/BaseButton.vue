@@ -54,6 +54,22 @@ export default defineComponent({
             type: String,
             default: null,
         },
+        weight: {
+            type: Number,
+            default: 400,
+        },
+        capitalize: {
+            type: Boolean,
+            default: false,
+        },
+        uppercase: {
+            type: Boolean,
+            default: false,
+        },
+        disabled: {
+            type: Boolean,
+            default: false,
+        },
     },
     setup(props) {
         const component = computed(() => {
@@ -67,6 +83,12 @@ export default defineComponent({
             `text-${props.textColor}`,
             `size-${props.size}`,
             `align-${props.align}`,
+            `fw-${props.weight}`,
+            {
+                capitalize: props.capitalize,
+                uppercase: props.uppercase,
+                disabled: props.disabled,
+            },
         ])
         const isAnchor = computed(() => component.value === ButtonType.ANCHOR)
         const useTarget = computed(() => (isAnchor.value ? props.target : null))
@@ -77,6 +99,8 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+$font-weights: 400, 500, 600, 700;
+
 .v-button {
     display: flex;
     align-items: center;
@@ -85,6 +109,16 @@ export default defineComponent({
     white-space: nowrap;
     padding: 0.5rem 1rem;
     border: 0;
+
+    /* Casing */
+
+    &.capitalize {
+        text-transform: capitalize;
+    }
+
+    &.uppercase {
+        text-transform: uppercase;
+    }
 
     /* Color */
 
@@ -108,6 +142,14 @@ export default defineComponent({
 
     &.text-white {
         color: #fff;
+    }
+
+    /* Font Weight */
+
+    @each $weight in $font-weights {
+        &.fw-#{$weight} {
+            font-weight: $weight;
+        }
     }
 
     /* Sizes */
@@ -148,6 +190,16 @@ export default defineComponent({
 
     &.align-space-between {
         justify-content: space-between;
+    }
+
+    /* States */
+
+    &.disabled {
+        cursor: not-allowed;
+
+        &.white {
+            color: #bbb;
+        }
     }
 }
 </style>

@@ -2,14 +2,14 @@ import { Ref, ref, UnwrapRef } from 'vue'
 
 export interface ComposableUseTab<T> {
     currentTab: Ref<UnwrapRef<T> | null>
-    changeTab: (tab: UnwrapRef<T>) => void
+    changeTab: (tab: UnwrapRef<T> | null) => void
     isTab: (tab: string) => boolean
 }
 
 export function useTab<T>(initialTab: T | null): ComposableUseTab<T> {
     const currentTab = ref<T | null>(initialTab)
 
-    function changeTab(tab: UnwrapRef<T>): void {
+    function changeTab(tab: UnwrapRef<T> | null): void {
         if (currentTab.value === tab) {
             currentTab.value = null
         } else {

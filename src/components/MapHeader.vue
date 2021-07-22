@@ -65,7 +65,7 @@ export default defineComponent({
 <style lang="scss" scoped>
 .header {
     position: relative;
-    z-index: 10;
+    z-index: 20;
     display: flex;
     justify-content: flex-end;
     background-color: #000;

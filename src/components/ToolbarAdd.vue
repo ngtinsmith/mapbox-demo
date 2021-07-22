@@ -12,7 +12,7 @@
             >
                 <span style="font-size: 1.25rem; display: flex;">
                     <i
-                        :class="isTab(tab)
+                        :class="tab === 'icon'
                             ? 'ri-map-pin-2-fill'
                             : 'ri-text'"
                     />
@@ -46,8 +46,24 @@
                     </BaseButton>
                 </div>
             </TabContent>
-            <TabContent :is-active="isTab('text')">
-                text
+
+            <TabContent :is-active="isTab('label')">
+                <div class="add-text">
+                    <FormField
+                        v-model="newText"
+                        label="New Text"
+                        @enter-submit="addTextToMap"
+                    />
+                    <BaseButton
+                        color="white"
+                        text-color="black"
+                        :weight="600"
+                        uppercase
+                        @click="addTextToMap"
+                    >
+                        Add
+                    </BaseButton>
+                </div>
             </TabContent>
         </div>
     </TabContent>
@@ -55,16 +71,35 @@
 
 <script lang="ts">
 import { useTab } from '@/composables/use-tab'
+import {
+    TextMarker,
+    useInjectableTextMarker,
+} from '@/composables/use-text-marker'
 import { remixIcons } from '@/constants/icons'
+import { stringToHtml } from '@/helpers/html-templates'
+import { GetMapInstance } from '@/types/mapbox'
 import { MapToolbarTab } from '@/types/tab'
 import debounce from 'lodash/debounce'
-import { capitalize, computed, defineComponent, PropType, ref } from 'vue'
+import mapboxgl from 'mapbox-gl'
+import {
+    capitalize,
+    computed,
+    defineComponent,
+    inject,
+    PropType,
+    ref,
+} from 'vue'
 import BaseButton from './BaseButton.vue'
+import FormField from './FormField.vue'
 import TabContent from './TabContent.vue'
 
 export default defineComponent({
-    components: { TabContent, BaseButton },
+    components: { TabContent, BaseButton, FormField },
     props: {
+        map: {
+            type: {} as PropType<mapboxgl.Map>,
+            default: undefined,
+        },
         currentTab: {
             type: String as PropType<MapToolbarTab>,
             default: null,
@@ -73,6 +108,61 @@ export default defineComponent({
     emits: ['mark'],
     setup(props, { emit }) {
         const isActive = computed(() => props.currentTab === MapToolbarTab.ADD)
+
+        // Inject properties
+
+        const { setTextMarker, setTextMarkerElement } =
+            useInjectableTextMarker()
+        const getMapInstance = inject<GetMapInstance>(
+            'getMapInstance',
+            () => new mapboxgl.Map()
+        )
+        const newText = ref('')
+
+        // Marker actions
+
+        function addTextToMap() {
+            const map = getMapInstance()
+
+            const textMarker = createTextMarkerElement({
+                text: newText.value,
+                onClick: (marker: TextMarker) => {
+                    setTextMarker(marker.text)
+                    setTextMarkerElement(marker.element)
+                },
+            })
+
+            // Add text markers to the map
+            const marker = new mapboxgl.Marker({
+                element: textMarker,
+                draggable: true,
+            })
+                .setLngLat(map.getCenter())
+                .addTo(map)
+
+            newText.value = ''
+        }
+
+        interface CreateTextMarkerOptions {
+            text: string
+            onClick: (marker: TextMarker) => void
+        }
+
+        function createTextMarkerElement(options: CreateTextMarkerOptions) {
+            const el = document.createElement('div')
+            const textFrag = stringToHtml(`<p>${options.text}</p>`)
+
+            el.classList.add('v-text-marker')
+            el.addEventListener('click', () =>
+                options.onClick({
+                    text: options.text,
+                    element: el,
+                })
+            )
+            el.appendChild(textFrag)
+
+            return el
+        }
 
         const iconKeyword = ref('')
         const icons = ref(remixIcons)
@@ -100,6 +190,7 @@ export default defineComponent({
         }
 
         return {
+            newText,
             isActive,
             addElementsTabs,
             currentLocalTab,
@@ -110,6 +201,7 @@ export default defineComponent({
             iconKeyword,
             searchIcon,
             capitalize,
+            addTextToMap,
         }
     },
 })
@@ -119,10 +211,6 @@ export default defineComponent({
 .toolbar-actions {
     display: flex;
     border-bottom: 1px solid #fff;
-
-    > :deep(*:not(:last-child)) {
-        /* margin-right: 0.5rem; */
-    }
 }
 
 .toolbar-content {
@@ -160,6 +248,17 @@ export default defineComponent({
         background-color: unset;
         outline: 0;
         color: #fff;
+    }
+}
+
+.add-text {
+    display: flex;
+    flex-direction: column;
+    background-color: #000;
+    padding: 1.5rem;
+
+    > :deep(*:not(:last-child)) {
+        margin-bottom: 0.5rem;
     }
 }
 </style>

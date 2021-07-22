@@ -16,19 +16,37 @@ export default defineComponent({
         MapHeader,
     },
     setup() {
-        const initialLocation = reactive<MapFeature>({
+        const locationPhilly: MapFeature = {
             type: 'Feature',
+            text: 'Philadelphia',
             properties: {
                 message: 'Foo',
                 iconSize: [50, 50],
             },
-            /* center: [-74.5, 40], */
-            center: [-73.9866, 40.7306],
+            place_name: 'Philadelphia, Pennsylvania, United States',
+            center: [-75.1327, 40.0115],
             geometry: {
                 type: 'Point',
-                coordinates: [-73.9866, 40.7306],
+                coordinates: [-75.1327, 40.0115],
             },
-        })
+        }
+
+        const locationMaine: MapFeature = {
+            type: 'Feature',
+            text: 'Main',
+            properties: {
+                message: 'Foo',
+                iconSize: [50, 50],
+            },
+            place_name: 'Philadelphia, Pennsylvania, United States',
+            center: [-68.137343, 45.137451],
+            geometry: {
+                type: 'Point',
+                coordinates: [-68.137343, 45.137451],
+            },
+        }
+
+        const initialLocation = reactive<MapFeature>(locationMaine)
 
         return { initialLocation }
     },
