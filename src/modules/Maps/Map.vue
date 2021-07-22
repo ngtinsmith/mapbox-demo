@@ -8,9 +8,9 @@
                 <BaseButton
                     v-for="tab in tabs"
                     :key="tab"
-                    :color="currentTab === tab ? 'white' : 'black'"
-                    :text-color="currentTab === tab ? 'black' : 'white'"
-                    :class="{ active: currentTab === tab }"
+                    :color="isTab(tab) ? 'white' : 'black'"
+                    :text-color="isTab(tab) ? 'black' : 'white'"
+                    :class="{ active: isTab(tab) }"
                     size="toggle"
                     :title="`${capitalize(tab)}`"
                     @click="() => handleChangeTab(tab)"
@@ -34,8 +34,9 @@
         <div class="toolbar-styling">
             <keep-alive>
                 <component
-                    :is="currentTabComponentStyle"
-                    :current-tab="currentTabStyle"
+                    :is="currentTabPropertiesComponent"
+                    :current-tab="currentTabProperty"
+                    @focus-text-marker="onTextMarkerFocus"
                     @focus-location="focusLocation"
                     @mark="addMarker"
                 />
@@ -43,14 +44,14 @@
 
             <div class="toolbar-actions">
                 <BaseButton
-                    v-for="tab in tabsStyle"
+                    v-for="tab in tabProperties"
                     :key="tab"
-                    :color="currentTabStyle === tab ? 'white' : 'black'"
-                    :text-color="currentTabStyle === tab ? 'black' : 'white'"
-                    :class="{ active: currentTabStyle === tab }"
+                    :color="currentTabProperty === tab ? 'white' : 'black'"
+                    :text-color="currentTabProperty === tab ? 'black' : 'white'"
+                    :class="{ active: currentTabProperty === tab }"
                     size="toggle"
                     :title="`${capitalize(tab)}`"
-                    @click="changeTabStyle(tab)"
+                    @click="changeTabProperty(tab)"
                 >
                     <span style="font-size: 1.25rem; display: flex;">
                         <i :class="getToolbarIcon(tab)" />
@@ -79,19 +80,19 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'
 import 'remixicon/fonts/remixicon.css'
 
-import BaseButton from './BaseButton.vue'
-import ToolbarSearch from './ToolbarSearch.vue'
-import ToolbarAdd from './ToolbarAdd.vue'
-import ToolbarExport from './ToolbarExport.vue'
-import ToolbarStyleLabel from './ToolbarStyleLabel.vue'
+import BaseButton from '@/components/BaseButton.vue'
+import ToolbarSearch from '@/modules/Toolbars/ToolbarSearch.vue'
+import ToolbarAdd from '@/modules/Toolbars/ToolbarAdd.vue'
+import ToolbarScreenshot from '@/modules/Toolbars/ToolbarScreenshot.vue'
+import ToolbarPropertiesLabel from '@/modules/Toolbars/ToolbarPropertiesLabel.vue'
 
 import { TextMarker, TextMarkerElement } from '@/composables/use-text-marker'
 import { useTab } from '@/composables/use-tab'
 
-import { MapToolbarTab, TabComponentStyle } from '@/types/tab'
+import { ToolbarTab } from '@/types/tab'
 import { MapFeature, MapCoordinates } from '@/types/mapbox'
-import { stringToHtml } from '@/helpers/html-templates'
-import axios from 'axios'
+import { createMarkerElement, createRemoveMarkerElement } from '@/services/html'
+import { fetchStaticMapImage } from '@/services/api'
 
 export default defineComponent({
     components: { BaseButton },
@@ -111,7 +112,7 @@ export default defineComponent({
         },
     },
     setup(props) {
-        // Text Marker
+        // -- Injectables
 
         const textMarker = ref<TextMarker['text']>('')
         const textMarkerElement = ref<TextMarkerElement>()
@@ -129,29 +130,25 @@ export default defineComponent({
             textMarkerElement.value = element
         }
 
-        // Tabs
+        // -- Tabs
 
-        const { currentTab, changeTab, isTab } = useTab<MapToolbarTab>(null)
-        const tabs = computed((): MapToolbarTab[] => {
-            return [
-                MapToolbarTab.SEARCH,
-                MapToolbarTab.ADD,
-                MapToolbarTab.SCREENSHOT,
-            ]
+        const { currentTab, changeTab, isTab } = useTab<ToolbarTab>(null)
+        const tabs = computed((): ToolbarTab[] => {
+            return [ToolbarTab.SEARCH, ToolbarTab.ADD, ToolbarTab.SCREENSHOT]
         })
 
         const currentTabComponent = computed(() => {
             let component
 
             switch (currentTab.value) {
-                case MapToolbarTab.SEARCH:
+                case ToolbarTab.SEARCH:
                     component = ToolbarSearch
                     break
-                case MapToolbarTab.ADD:
+                case ToolbarTab.ADD:
                     component = ToolbarAdd
                     break
-                case MapToolbarTab.SCREENSHOT:
-                    component = ToolbarExport
+                case ToolbarTab.SCREENSHOT:
+                    component = ToolbarScreenshot
                     break
                 default:
                     break
@@ -161,21 +158,21 @@ export default defineComponent({
         })
 
         const {
-            currentTab: currentTabStyle,
-            changeTab: changeTabStyle,
-            isTab: isTabStyle,
-        } = useTab<TabComponentStyle>(null)
+            currentTab: currentTabProperty,
+            changeTab: changeTabProperty,
+            isTab: isTabProperty,
+        } = useTab<ToolbarTab>(null)
 
-        const tabsStyle = computed((): TabComponentStyle[] => {
-            return [TabComponentStyle.LABEL]
+        const tabProperties = computed((): ToolbarTab[] => {
+            return [ToolbarTab.LABEL]
         })
 
-        const currentTabComponentStyle = computed(() => {
+        const currentTabPropertiesComponent = computed(() => {
             let component
 
-            switch (currentTabStyle.value) {
-                case TabComponentStyle.LABEL:
-                    component = ToolbarStyleLabel
+            switch (currentTabProperty.value) {
+                case ToolbarTab.LABEL:
+                    component = ToolbarPropertiesLabel
                     break
                 default:
                     break
@@ -184,7 +181,7 @@ export default defineComponent({
             return component
         })
 
-        // Map
+        // -- Map
 
         let map: mapboxgl.Map = {} as mapboxgl.Map
         const activeLocation = ref<MapFeature>(props.initialLocation)
@@ -241,16 +238,22 @@ export default defineComponent({
             }
         }
 
-        async function onClickMap(
-            e: mapboxgl.MapMouseEvent & mapboxgl.EventData
-        ): Promise<void> {
+        async function onClickMap(): Promise<void> {
+            /* e: mapboxgl.MapMouseEvent & mapboxgl.EventData */
             changeTab(null)
-            changeTabStyle(null)
+
+            if (textMarker.value.length === 0) {
+                changeTabProperty(null)
+            }
         }
 
         function focusLocation(location: MapFeature): void {
             activeLocation.value = location
             map.jumpTo({ center: location.geometry.coordinates })
+        }
+
+        function onTextMarkerFocus(): void {
+            changeTab(ToolbarTab.LABEL)
         }
 
         function addMarker(classMark: string): void {
@@ -265,9 +268,7 @@ export default defineComponent({
             const markerElement = createMarkerElement(
                 classMark,
                 iconSize,
-                () => {
-                    return
-                }
+                () => undefined
             )
 
             // Create marker PopUp with remove button
@@ -290,73 +291,30 @@ export default defineComponent({
                 .addTo(map)
         }
 
-        function createMarkerElement(
-            mark: string,
-            iconSize: MapCoordinates,
-            onClick?: () => void
-        ) {
-            const [lng, lat] = iconSize
-            const el = document.createElement('div')
-            const svgFrag = stringToHtml(`<i class="${mark}"></i>`)
-
-            el.classList.add('v-marker')
-            el.setAttribute('title', mark.replace(/^(ri-)/, ''))
-            onClick && el.addEventListener('click', onClick)
-
-            Object.assign(el.style, {
-                display: 'flex',
-                width: `${lng}px`,
-                height: `${lat}px`,
-                fontSize: `${lng}px`, // for remix size
-            })
-
-            el.appendChild(svgFrag)
-
-            return el
-        }
-
-        function createRemoveMarkerElement(onRemove: () => void) {
-            const el = document.createElement('div')
-            const removeBtnFragment = stringToHtml(`
-                <button class="v-button" title="Remove marker">
-                    Remove marker <i class="ri-delete-bin-line ri-xl"></i>
-                </button>
-            `)
-
-            removeBtnFragment
-                .querySelector('button')
-                ?.addEventListener('click', onRemove)
-            el.appendChild(removeBtnFragment)
-
-            return el
-        }
-
-        function getToolbarIcon(
-            tab: MapToolbarTab | TabComponentStyle
-        ): string {
+        function getToolbarIcon(tab: ToolbarTab): string {
             let classIcon = ''
 
             switch (tab) {
-                case MapToolbarTab.SEARCH:
+                case ToolbarTab.SEARCH:
                     classIcon = 'ri-search-line'
                     break
-                case MapToolbarTab.ADD:
+                case ToolbarTab.ADD:
                     classIcon = 'ri-add-fill'
                     break
-                case MapToolbarTab.EXPORT:
+                case ToolbarTab.EXPORT:
                     classIcon = 'ri-upload-2-fill'
                     break
-                case TabComponentStyle.ICON:
+                case ToolbarTab.ICON:
                     classIcon = 'ri-tools-fill'
                     break
-                case TabComponentStyle.LABEL:
+                case ToolbarTab.LABEL:
                     classIcon = 'ri-text'
                     break
-                case TabComponentStyle.LAYER:
+                case ToolbarTab.LAYER:
                     classIcon = 'ri-stack-fill'
                     break
-                case TabComponentStyle.SCREENSHOT:
-                    classIcon = 'ri-screenshot-2-fill'
+                case ToolbarTab.SCREENSHOT:
+                    classIcon = 'ri-camera-fill'
                     break
                 default:
                     break
@@ -365,8 +323,8 @@ export default defineComponent({
             return classIcon
         }
 
-        function handleChangeTab(tab: MapToolbarTab) {
-            if (tab === MapToolbarTab.SCREENSHOT) {
+        function handleChangeTab(tab: ToolbarTab) {
+            if (tab === ToolbarTab.SCREENSHOT) {
                 changeTab(null)
                 screenshot()
             } else {
@@ -383,16 +341,16 @@ export default defineComponent({
             // Mapbox max-height: Height must be between 1-1280
             h = h > 1280 ? 1280 : w
 
-            const token = process.env.VUE_APP_MAPBOX_TOKEN
-            const url = `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/${lng},${lat},${props.zoom},${props.bearing}/${w}x${h}?access_token=${token}`
-
-            const result = await axios({
-                url,
-                method: 'GET',
-                responseType: 'blob',
+            const imageBlob = await fetchStaticMapImage({
+                lng,
+                lat,
+                width: w,
+                height: h,
+                zoom: props.zoom,
+                bearing: props.bearing,
             })
 
-            download(result.data)
+            download(imageBlob)
         }
 
         function download(image: Blob, filename = 'image'): void {
@@ -416,13 +374,14 @@ export default defineComponent({
             isTab,
             currentTabComponent,
 
-            tabsStyle,
-            currentTabStyle,
-            changeTabStyle,
-            isTabStyle,
-            currentTabComponentStyle,
+            tabProperties,
+            currentTabProperty,
+            changeTabProperty,
+            isTabProperty,
+            currentTabPropertiesComponent,
 
             focusLocation,
+            onTextMarkerFocus,
             addMarker,
             getToolbarIcon,
             capitalize,

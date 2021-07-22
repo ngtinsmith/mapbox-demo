@@ -1,4 +1,6 @@
 export const remixIcons = [
+    // Maps
+
     'ri-anchor-fill',
     'ri-anchor-line',
     'ri-barricade-fill',
@@ -169,5 +171,8 @@ export const remixIcons = [
     'ri-truck-line',
     'ri-walk-fill',
     'ri-walk-line',
+
+    // Uncategorized
     'ri-screenshot-2-fill',
+    'ri-camera-fill',
 ]

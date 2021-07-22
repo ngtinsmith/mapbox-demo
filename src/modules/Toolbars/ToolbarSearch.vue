@@ -29,11 +29,11 @@
 import { computed, defineComponent, PropType, ref } from 'vue'
 import mapboxgl from 'mapbox-gl'
 
-import TabContent from './TabContent.vue'
-import BaseButton from './BaseButton.vue'
+import TabContent from '@/components/TabContent.vue'
+import BaseButton from '@/components/BaseButton.vue'
 
 import debounce from 'lodash/debounce'
-import { MapToolbarTab } from '@/types/tab'
+import { ToolbarTab } from '@/types/tab'
 import { MapFeature } from '@/types/mapbox'
 import { searchLocation } from '@/services/api'
 
@@ -45,7 +45,7 @@ export default defineComponent({
             default: null,
         },
         currentTab: {
-            type: String as PropType<MapToolbarTab>,
+            type: String as PropType<ToolbarTab>,
             default: null,
         },
         placeholder: {
@@ -62,9 +62,7 @@ export default defineComponent({
         const searchKeyword = ref('')
         const searchedMaps = ref<MapFeature[]>([])
 
-        const isActive = computed(
-            () => props.currentTab === MapToolbarTab.SEARCH
-        )
+        const isActive = computed(() => props.currentTab === ToolbarTab.SEARCH)
 
         async function searchHandler(e: Event) {
             const target = e.target as HTMLInputElement

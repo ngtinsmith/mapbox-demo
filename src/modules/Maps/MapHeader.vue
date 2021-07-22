@@ -41,8 +41,8 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import BaseButton from './BaseButton.vue'
-import PopUp from './PopUp.vue'
+import BaseButton from '@/components/BaseButton.vue'
+import PopUp from '@/components/PopUp.vue'
 
 export default defineComponent({
     components: { BaseButton, PopUp },

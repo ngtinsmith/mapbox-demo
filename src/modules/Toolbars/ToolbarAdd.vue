@@ -4,8 +4,8 @@
             <BaseButton
                 v-for="tab in addElementsTabs"
                 :key="tab"
-                :color="currentLocalTab === tab ? 'white' : 'black'"
-                :text-color="currentLocalTab === tab ? 'black' : 'white'"
+                :color="isTab(tab) ? 'white' : 'black'"
+                :text-color="isTab(tab) ? 'black' : 'white'"
                 size="toggle"
                 :title="`${capitalize(tab)}s`"
                 @click="changeTab(tab)"
@@ -21,7 +21,7 @@
         </div>
 
         <div class="toolbar-content">
-            <TabContent :is-active="isTab('icon')">
+            <TabContent :is-active="isTabIcon">
                 <div class="search-field">
                     <input
                         placeholder="Search icon"
@@ -47,7 +47,7 @@
                 </div>
             </TabContent>
 
-            <TabContent :is-active="isTab('label')">
+            <TabContent :is-active="isTabLabel">
                 <div class="add-text">
                     <FormField
                         v-model="newText"
@@ -70,17 +70,6 @@
 </template>
 
 <script lang="ts">
-import { useTab } from '@/composables/use-tab'
-import {
-    TextMarker,
-    useInjectableTextMarker,
-} from '@/composables/use-text-marker'
-import { remixIcons } from '@/constants/icons'
-import { stringToHtml } from '@/helpers/html-templates'
-import { GetMapInstance } from '@/types/mapbox'
-import { MapToolbarTab } from '@/types/tab'
-import debounce from 'lodash/debounce'
-import mapboxgl from 'mapbox-gl'
 import {
     capitalize,
     computed,
@@ -89,9 +78,24 @@ import {
     PropType,
     ref,
 } from 'vue'
-import BaseButton from './BaseButton.vue'
-import FormField from './FormField.vue'
-import TabContent from './TabContent.vue'
+import mapboxgl from 'mapbox-gl'
+
+import { useTab } from '@/composables/use-tab'
+import {
+    TextMarker,
+    useInjectableTextMarker,
+} from '@/composables/use-text-marker'
+
+import BaseButton from '@/components/BaseButton.vue'
+import FormField from '@/components/FormField.vue'
+import TabContent from '@/components/TabContent.vue'
+
+import { remixIcons } from '@/constants/icons'
+import { GetMapInstance } from '@/types/mapbox'
+import { ToolbarTab } from '@/types/tab'
+
+import debounce from 'lodash/debounce'
+import { createTextMarkerElement } from '@/services/html'
 
 export default defineComponent({
     components: { TabContent, BaseButton, FormField },
@@ -101,13 +105,13 @@ export default defineComponent({
             default: undefined,
         },
         currentTab: {
-            type: String as PropType<MapToolbarTab>,
+            type: String as PropType<ToolbarTab>,
             default: null,
         },
     },
-    emits: ['mark'],
+    emits: ['mark', 'focus-text-marker'],
     setup(props, { emit }) {
-        const isActive = computed(() => props.currentTab === MapToolbarTab.ADD)
+        const isActive = computed(() => props.currentTab === ToolbarTab.ADD)
 
         // Inject properties
 
@@ -129,11 +133,12 @@ export default defineComponent({
                 onClick: (marker: TextMarker) => {
                     setTextMarker(marker.text)
                     setTextMarkerElement(marker.element)
+                    emit('focus-text-marker')
                 },
             })
 
             // Add text markers to the map
-            const marker = new mapboxgl.Marker({
+            new mapboxgl.Marker({
                 element: textMarker,
                 draggable: true,
             })
@@ -143,26 +148,7 @@ export default defineComponent({
             newText.value = ''
         }
 
-        interface CreateTextMarkerOptions {
-            text: string
-            onClick: (marker: TextMarker) => void
-        }
-
-        function createTextMarkerElement(options: CreateTextMarkerOptions) {
-            const el = document.createElement('div')
-            const textFrag = stringToHtml(`<p>${options.text}</p>`)
-
-            el.classList.add('v-text-marker')
-            el.addEventListener('click', () =>
-                options.onClick({
-                    text: options.text,
-                    element: el,
-                })
-            )
-            el.appendChild(textFrag)
-
-            return el
-        }
+        // Icons search
 
         const iconKeyword = ref('')
         const icons = ref(remixIcons)
@@ -179,23 +165,29 @@ export default defineComponent({
             currentTab: currentLocalTab,
             changeTab,
             isTab,
-        } = useTab<string>('icon')
+        } = useTab<ToolbarTab>(null)
 
-        const addElementsTabs = computed((): string[] => {
-            return ['icon', 'label']
+        const addElementsTabs = computed((): ToolbarTab[] => {
+            return [ToolbarTab.ICON, ToolbarTab.LABEL]
         })
+        const isTabIcon = computed(() => isTab(ToolbarTab.ICON))
+        const isTabLabel = computed(() => isTab(ToolbarTab.LABEL))
 
         function addMark(iconClass: string): void {
             emit('mark', iconClass)
         }
 
         return {
-            newText,
             isActive,
+            isTabIcon,
+            isTabLabel,
+            newText,
+
             addElementsTabs,
             currentLocalTab,
             changeTab,
             isTab,
+
             addMark,
             filteredIcons,
             iconKeyword,

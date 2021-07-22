@@ -5,9 +5,10 @@
 
 <script lang="ts">
 import { defineComponent, reactive } from 'vue'
-import MapHeader from './components/MapHeader.vue'
-import Map from './components/Map.vue'
-import { MapFeature } from './types/mapbox'
+import MapHeader from '@/modules/Maps/MapHeader.vue'
+import Map from '@/modules/Maps/Map.vue'
+
+import { MapFeature } from '@/types/mapbox'
 
 export default defineComponent({
     name: 'App',

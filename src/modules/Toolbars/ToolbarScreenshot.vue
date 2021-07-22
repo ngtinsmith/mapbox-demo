@@ -1,55 +1,32 @@
 <template>
-    <TabContent :is-active="isActive">
-        <div class="style-label">
-            <h4>Text Marker</h4>
-            <FormField
-                v-model="textMarker"
-                label="Text"
-            />
-            <BaseButton
-                color="white"
-                text-color="black"
-                :weight="600"
-                :disabled="textMarker.length === 0"
-                uppercase
-                @click="onUpdateTextMarker"
-            >
-                SET
-            </BaseButton>
-            <BaseButton
-                color="white"
-                text-color="black"
-                :weight="600"
-                :disabled="textMarker.length === 0"
-                uppercase
-                @click="removeTextMarker"
-            >
-                REMOVE
-            </BaseButton>
-        </div>
-    </TabContent>
+    <BaseButton
+        color="black"
+        text-color="white"
+        size="toggle"
+        class="icon"
+    >
+        <span style="font-size: 24px; display: flex;">
+        </span>
+    </BaseButton>
 </template>
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
 import mapboxgl from 'mapbox-gl'
 
-import TabContent from './TabContent.vue'
-import FormField from './FormField.vue'
-
-import { TabComponentStyle } from '@/types/tab'
+import BaseButton from '@/components/BaseButton.vue'
+import { ToolbarTab } from '@/types/tab'
 import { useInjectableTextMarker } from '@/composables/use-text-marker'
-import BaseButton from './BaseButton.vue'
 
 export default defineComponent({
-    components: { TabContent, FormField, BaseButton },
+    components: { BaseButton },
     props: {
         map: {
             type: Object as PropType<mapboxgl.Map>,
             default: null,
         },
         currentTab: {
-            type: String as PropType<TabComponentStyle>,
+            type: String as PropType<ToolbarTab>,
             default: null,
         },
         placeholder: {
@@ -67,7 +44,7 @@ export default defineComponent({
     },
     setup(props) {
         const isActive = computed(
-            () => props.currentTab === TabComponentStyle.LABEL
+            () => props.currentTab === ToolbarTab.SCREENSHOT
         )
         const { textMarker, setTextMarker, textMarkerElement } =
             useInjectableTextMarker()

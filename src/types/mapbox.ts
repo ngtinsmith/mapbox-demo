@@ -42,3 +42,12 @@ export interface PlaceFeatureContext {
 }
 
 export type GetMapInstance = () => mapboxgl.Map
+
+export interface MapboxStaticImageAPIProps {
+    lng: number
+    lat: number
+    zoom: number
+    bearing: number
+    width: number
+    height: number
+}
