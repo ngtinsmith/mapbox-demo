@@ -342,7 +342,7 @@ export default defineComponent({
             w = w > 1280 ? 1280 : w
             h = h > 1280 ? 1280 : h
 
-            const imageBlob = await fetchStaticMapImage({
+            const imageBlob: Blob = await fetchStaticMapImage({
                 lng,
                 lat,
                 width: w,
